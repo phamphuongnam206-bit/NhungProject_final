@@ -1,0 +1,163 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "STM32 - Nap code / Serial",
+      "type": "process",
+      "command": "${env:USERPROFILE}/.platformio/penv/Scripts/python.exe",
+      "args": [
+        "${workspaceFolder}/tools/stm32.py",
+        "${input:stm32Action}",
+        "${file}"
+      ],
+      "osx": {
+        "command": "${env:HOME}/.platformio/penv/bin/python"
+      },
+      "linux": {
+        "command": "${env:HOME}/.platformio/penv/bin/python"
+      },
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Mo phong - Chay toan bo test",
+      "type": "process",
+      "command": "${env:USERPROFILE}/.platformio/penv/Scripts/python.exe",
+      "args": [
+        "${workspaceFolder}/tools/run_host_tests.py"
+      ],
+      "osx": {
+        "command": "${env:HOME}/.platformio/penv/bin/python"
+      },
+      "linux": {
+        "command": "${env:HOME}/.platformio/penv/bin/python"
+      },
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "detail": "Bien dich va chay toan bo kiem thu mo phong tren PC."
+    },
+    {
+      "label": "Mo phong - Luu log mau",
+      "type": "process",
+      "command": "${env:USERPROFILE}/.platformio/penv/Scripts/python.exe",
+      "args": [
+        "${workspaceFolder}/tools/run_host_tests.py",
+        "--log",
+        "${workspaceFolder}/logs/sim"
+      ],
+      "osx": {
+        "command": "${env:HOME}/.platformio/penv/bin/python"
+      },
+      "linux": {
+        "command": "${env:HOME}/.platformio/penv/bin/python"
+      },
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "test",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "detail": "Chay mo phong va luu cac log UART mau vao logs/sim."
+    },
+    {
+      "label": "Web - Mo sa ban",
+      "type": "process",
+      "command": "xdg-open",
+      "args": [
+        "${workspaceFolder}/tools/web/sa_ban.html"
+      ],
+      "windows": {
+        "command": "cmd",
+        "args": [
+          "/c",
+          "start",
+          "\"\"",
+          "\"${workspaceFolder}/tools/web/sa_ban.html\""
+        ]
+      },
+      "osx": {
+        "command": "open"
+      },
+      "problemMatcher": [],
+      "detail": "Mo sa ban tren trinh duyet; can Chrome hoac Edge de ket noi cong COM (UART/Bluetooth)."
+    },
+    {
+      "label": "STM32 - Build ban Bluetooth (HC-05 38400)",
+      "type": "process",
+      "command": "${env:USERPROFILE}/.platformio/penv/Scripts/pio.exe",
+      "args": [
+        "run",
+        "-e",
+        "test_static_route_bt"
+      ],
+      "osx": {
+        "command": "${env:HOME}/.platformio/penv/bin/pio"
+      },
+      "linux": {
+        "command": "${env:HOME}/.platformio/penv/bin/pio"
+      },
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "detail": "Build firmware cho ban Bluetooth HC-05 o toc do 38400 baud."
+    },
+    {
+      "label": "STM32 - Nap ban Bluetooth (HC-05 38400)",
+      "type": "process",
+      "command": "${env:USERPROFILE}/.platformio/penv/Scripts/pio.exe",
+      "args": [
+        "run",
+        "-e",
+        "test_static_route_bt",
+        "-t",
+        "upload"
+      ],
+      "osx": {
+        "command": "${env:HOME}/.platformio/penv/bin/pio"
+      },
+      "linux": {
+        "command": "${env:HOME}/.platformio/penv/bin/pio"
+      },
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "detail": "Nap firmware Bluetooth HC-05 38400 baud len STM32."
+    }
+  ],
+  "inputs": [
+    {
+      "id": "stm32Action",
+      "type": "pickString",
+      "description": "Chon thao tac (firmware theo file .cpp dang mo, mac dinh test_static_route)",
+      "options": [
+        { "label": "1. Nap code", "value": "upload" },
+        { "label": "2. Doc Serial", "value": "monitor" }
+      ],
+      "default": "upload"
+    }
+  ]
+}

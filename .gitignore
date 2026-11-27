@@ -1,1 +1,3 @@
-/NhungProject_clean
+.pio/
+.cache/
+*.exe

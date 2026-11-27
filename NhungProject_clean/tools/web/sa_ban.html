@@ -1,0 +1,929 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Sa bàn NhungProject</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one working bench. The taped board (map) is the hero on the left; tuning,
+   scenario and the car link live in a right-hand rack; charts and the event log sit
+   under the board. Palette: navy (user's choice) — navy header band and controls,
+   navy-tinted neutrals, amber car against it, green detour. */
+:root {
+  --bg: #e8edf5; --panel: #ffffff; --panel-2: #f1f4fa; --ink: #0f1e3d; --muted: #4f5e79; --line: #cdd6e5;
+  --board: #f8fafd; --grid: #e1e8f2; --tape: #0f1e3d; --route: #1d3d8a; --avoid: #12805a; --accent: #e07a18;
+  --random: #b4770e; --unknown: #a23b8e; --box: #98a5b9; --danger: #c0372c; --ok: #16805a; --warn: #a66e0e;
+  --focus: #2f5fd0; --navy: #12264f; --on-navy: #eef3fc; --navy-soft: rgba(238, 243, 252, .14);
+  --primary: #1b3468; --on-primary: #ffffff;
+  --font-display: "Barlow Semi Condensed", "Arial Narrow", "Segoe UI", sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #091327; --panel: #0e1c36; --panel-2: #122544; --ink: #e3eaf7; --muted: #93a3c0; --line: #20345a;
+  --board: #0b1830; --grid: #16294b; --tape: #c8d5ec; --route: #80a7f6; --avoid: #43c38c; --accent: #f59a45;
+  --random: #e6a94d; --unknown: #da86c7; --box: #4a5b79; --danger: #f06b5f; --ok: #4cc58f; --warn: #e5b350;
+  --focus: #80a7f6; --navy: #0c1a33; --on-navy: #e3eaf7; --navy-soft: rgba(227, 234, 247, .10);
+  --primary: #3a62b8; --on-primary: #ffffff; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #091327; --panel: #0e1c36; --panel-2: #122544; --ink: #e3eaf7; --muted: #93a3c0; --line: #20345a;
+  --board: #0b1830; --grid: #16294b; --tape: #c8d5ec; --route: #80a7f6; --avoid: #43c38c; --accent: #f59a45;
+  --random: #e6a94d; --unknown: #da86c7; --box: #4a5b79; --danger: #f06b5f; --ok: #4cc58f; --warn: #e5b350;
+  --focus: #80a7f6; --navy: #0c1a33; --on-navy: #e3eaf7; --navy-soft: rgba(227, 234, 247, .10);
+  --primary: #3a62b8; --on-primary: #ffffff; color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.45 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 40px; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 700; letter-spacing: .01em; margin: 0; text-wrap: balance; }
+h1 { font-size: 1.75rem; line-height: 1.1; }
+h2 { font-size: 1.05rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+button, select, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.mono, .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.top { display: flex; flex-wrap: wrap; align-items: end; gap: 12px 24px; margin-bottom: 14px;
+  background: var(--navy); color: var(--on-navy); border-radius: var(--radius); padding: 16px 18px; }
+.top h1 { color: var(--on-navy); }
+.top h1 small { font-family: var(--font-mono); font-weight: 400; font-size: .8rem; letter-spacing: .02em; opacity: .7; margin-left: 10px; }
+.top p { margin: 4px 0 0; color: var(--on-navy); opacity: .78; max-width: 70ch; }
+.tabs { display: flex; gap: 4px; background: var(--navy-soft); border-radius: 999px; padding: 4px; margin-left: auto; }
+.tabs button { border: 0; background: transparent; padding: 6px 14px; border-radius: 999px; cursor: pointer; color: var(--on-navy); opacity: .8; font-weight: 600; }
+.tabs button[aria-selected="true"] { background: var(--on-navy); color: var(--navy); opacity: 1; }
+.live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); margin-right: 6px; vertical-align: 1px; }
+.live-dot.on { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 25%, transparent); }
+
+.bench { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+@media (max-width: 1080px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
+.board-card { padding: 12px; display: grid; gap: 10px; min-width: 0; }
+.board-head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.board-head .where { color: var(--muted); font-size: .85rem; margin-left: auto; }
+canvas#map { width: 100%; height: auto; display: block; border-radius: 6px; background: var(--board); touch-action: manipulation; }
+canvas#map.placing { cursor: crosshair; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .8rem; color: var(--muted); }
+.legend i { display: inline-block; width: 18px; height: 0; border-top: 3px solid; vertical-align: 3px; margin-right: 5px; }
+.legend i.box { width: 11px; height: 11px; border: 0; vertical-align: -1px; }
+
+.playbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.playbar input[type=range] { flex: 1 1 220px; min-width: 0; accent-color: var(--accent); }
+.btn { border: 1px solid var(--line); background: var(--panel-2); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+.btn:hover { border-color: var(--muted); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.primary { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+.btn.stop { background: var(--danger); color: #fff; border-color: var(--danger); font-family: var(--font-display); letter-spacing: .05em; font-size: 1.05rem; padding: 8px 18px; }
+.btn.small { padding: 3px 9px; font-size: .82rem; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; background: var(--panel-2); padding: 5px 9px; cursor: pointer; font-family: var(--font-mono); font-size: .82rem; }
+.seg button[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); }
+h2 { color: var(--route); }
+
+.verdict { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; align-items: center; padding: 12px 14px; }
+.pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-weight: 600; font-size: .85rem; white-space: nowrap; }
+.pill.ok { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
+.pill.bad { background: color-mix(in srgb, var(--danger) 16%, transparent); color: var(--danger); }
+.pill.idle { background: var(--panel-2); color: var(--muted); }
+.verdict .why { color: var(--muted); font-size: .88rem; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); border-top: 1px solid var(--line); }
+.stat { padding: 10px 14px; border-right: 1px solid var(--line); min-width: 0; }
+.stat:last-child { border-right: 0; }
+.stat b { display: block; font-family: var(--font-mono); font-size: 1.15rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+.stat span { color: var(--muted); font-size: .78rem; }
+.stat.warn b { color: var(--warn); } .stat.bad b { color: var(--danger); }
+
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.chart { padding: 10px 12px 6px; min-width: 0; }
+.chart h3 { font-size: .95rem; margin-bottom: 4px; }
+.chart .box { position: relative; height: 170px; }
+.chart .nochart { color: var(--muted); font-size: .85rem; padding: 20px 0; }
+.events { padding: 10px 12px; }
+.events ol { list-style: none; margin: 8px 0 0; padding: 0; max-height: 220px; overflow: auto; font-size: .85rem; }
+.events li { display: grid; grid-template-columns: 64px 110px 1fr; gap: 8px; padding: 4px 6px; border-radius: 6px; cursor: pointer; }
+.events li:hover { background: var(--panel-2); }
+.events li .tag { font-weight: 600; }
+.events .t-OBSTACLE .tag { color: var(--random); } .events .t-AVOID .tag { color: var(--avoid); }
+.events .t-AVOID_FAIL .tag, .events .t-END.bad .tag { color: var(--danger); } .events .t-END .tag { color: var(--ok); }
+
+.rack { display: grid; gap: 12px; min-width: 0; }
+.panel { padding: 12px 14px; display: grid; gap: 10px; min-width: 0; }
+.panel header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.panel .hint { color: var(--muted); font-size: .8rem; margin: 0; }
+.param { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; }
+.param label { font-weight: 600; font-size: .88rem; }
+.param .val { display: flex; gap: 6px; align-items: center; }
+.param input[type=number] { width: 84px; padding: 3px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-2); font-family: var(--font-mono); text-align: right; }
+.param input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--route); }
+.param .meta { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 8px; font-size: .75rem; color: var(--muted); }
+.param .car { font-family: var(--font-mono); }
+.param .car.diff { color: var(--warn); font-weight: 600; } .param .car.same { color: var(--ok); }
+.param.changed label::after { content: " •"; color: var(--accent); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.row label { font-size: .85rem; }
+select, .field { padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-2); }
+.field { width: 76px; font-family: var(--font-mono); text-align: right; }
+.unknowns { display: flex; flex-wrap: wrap; gap: 6px; font-size: .8rem; }
+.unknowns span { background: color-mix(in srgb, var(--unknown) 14%, transparent); color: var(--unknown); border-radius: 999px; padding: 2px 4px 2px 9px; font-family: var(--font-mono); }
+.unknowns button { border: 0; background: transparent; color: inherit; cursor: pointer; padding: 0 5px; }
+.console { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; height: 170px; overflow: auto; padding: 6px 8px; font: 12px/1.4 var(--font-mono); white-space: pre-wrap; word-break: break-all; }
+.console .tx { color: var(--route); } .console .err { color: var(--danger); } .console .ack { color: var(--ok); }
+textarea { width: 100%; min-height: 120px; resize: vertical; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); color: var(--ink); font: 12px/1.45 var(--font-mono); }
+.notice { border-left: 3px solid var(--warn); padding: 6px 10px; background: color-mix(in srgb, var(--warn) 9%, transparent); font-size: .83rem; border-radius: 4px; }
+.toast { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--panel); padding: 8px 14px; border-radius: 8px; font-size: .88rem; opacity: 0; transform: translateY(8px); transition: opacity .2s, transform .2s; pointer-events: none; }
+.toast.show { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+.below { display: grid; gap: 12px; margin-top: 12px; }
+</style>
+</head>
+<body>
+<div class="top">
+  <div>
+    <h1>Sa bàn NhungProject<small>1800 × 1200 mm · STM32F103</small></h1>
+    <p>Mô phỏng lộ trình ôm cua và né vật cản bằng đúng thuật toán của firmware, chỉnh tham số, rồi gửi xuống xe qua UART hoặc Bluetooth HC-05.</p>
+  </div>
+  <div class="tabs" role="tablist" aria-label="Nguồn dữ liệu hiển thị">
+    <button role="tab" id="tab-sim" aria-selected="true">Mô phỏng</button>
+    <button role="tab" id="tab-car" aria-selected="false"><span class="live-dot" id="liveDot"></span>Xe thật</button>
+    <button role="tab" id="tab-log" aria-selected="false">Mở log</button>
+  </div>
+</div>
+
+<div class="bench">
+  <main style="min-width:0">
+    <section class="card board-card" aria-label="Sa bàn">
+      <div class="board-head">
+        <h2 id="boardTitle">Mô phỏng · lượt chạy hiện tại</h2>
+        <span class="where mono" id="cursorPos">di chuột lên sa bàn để xem tọa độ</span>
+      </div>
+      <canvas id="map" width="1200" height="931" aria-label="Bản đồ sa bàn 1800 × 1200 mm"></canvas>
+      <div class="legend">
+        <span><i style="border-color:var(--route);border-top-style:dashed"></i>Lộ trình 5 node</span>
+        <span><i style="border-color:var(--route)"></i>Đường tham chiếu ôm cua</span>
+        <span><i style="border-color:var(--avoid)"></i>Đường né</span>
+        <span><i style="border-color:var(--accent)"></i>Xe đi thật</span>
+        <span><i style="border-color:var(--accent);border-top-style:dotted"></i>Xe tự ước lượng</span>
+        <span><i class="box" style="background:var(--box)"></i>Hộp cố định</span>
+        <span><i class="box" style="background:var(--random)"></i>Vật ngẫu nhiên</span>
+        <span><i class="box" style="background:var(--unknown)"></i>Vật lạ</span>
+      </div>
+      <div class="playbar">
+        <button class="btn primary" id="playBtn" aria-label="Phát hoặc tạm dừng">▶ Phát</button>
+        <input type="range" id="scrub" min="0" max="1000" value="0" step="1" aria-label="Thời điểm">
+        <span class="mono" id="timeLabel">0,0 / 0,0 s</span>
+        <span class="seg" role="group" aria-label="Tốc độ phát">
+          <button data-speed="1" aria-pressed="false">×1</button><button data-speed="2" aria-pressed="true">×2</button><button data-speed="4" aria-pressed="false">×4</button><button data-speed="8" aria-pressed="false">×8</button>
+        </span>
+      </div>
+    </section>
+
+    <section class="card below" style="gap:0" aria-label="Kết quả">
+      <div class="verdict"><span class="pill idle" id="verdictPill">Chưa chạy</span><span class="why" id="verdictWhy"></span></div>
+      <div class="stats" id="stats"></div>
+    </section>
+
+    <div class="charts below">
+      <section class="card chart"><h3>Tốc độ (mm/s)</h3><div class="box"><canvas id="chSpeed"></canvas></div></section>
+      <section class="card chart"><h3>Lệch ngang và độ dịch né (mm)</h3><div class="box"><canvas id="chCross"></canvas></div></section>
+      <section class="card chart"><h3>CPS bánh: đặt và thực</h3><div class="box"><canvas id="chCps"></canvas></div></section>
+    </div>
+
+    <section class="card events below" aria-label="Sự kiện">
+      <h2>Sự kiện trong lượt chạy</h2>
+      <ol id="events"></ol>
+    </section>
+  </main>
+
+  <aside class="rack">
+    <section class="card panel" aria-labelledby="hParams">
+      <header><h2 id="hParams">Tham số firmware</h2><button class="btn small" id="resetParams">Mặc định</button></header>
+      <p class="hint">Đổi được khi xe đứng yên bằng lệnh <span class="mono">$SET</span>, không cần nạp lại. Cột “xe” là giá trị xe báo về.</p>
+      <div id="params" style="display:grid;gap:12px"></div>
+    </section>
+
+    <section class="card panel" aria-labelledby="hScen">
+      <header><h2 id="hScen">Kịch bản mô phỏng</h2></header>
+      <div class="row"><label for="randomSel">Vật ngẫu nhiên xuất hiện ở</label>
+        <select id="randomSel"><option value="0">Không có</option><option value="14">Ô 14 (1250, 850)</option><option value="15">Ô 15 (1450, 450)</option><option value="16">Ô 16 (1450, 150)</option><option value="17">Ô 17 (1750, 250)</option></select></div>
+      <div class="row"><button class="btn" id="placeBtn" aria-pressed="false">Đặt vật lạ</button><button class="btn small" id="clearUnknown">Xóa vật lạ</button>
+        <button class="btn small" id="exBlock" title="Vật lấn một phần đường cuối: có chỗ né">Ví dụ: né được</button>
+        <button class="btn small" id="exCenter" title="Vật giữa hành lang N1→N2: không có khe">Ví dụ: kẹt</button></div>
+      <p class="hint" id="placeHint">Bấm “Đặt vật lạ” rồi bấm lên sa bàn để thêm hộp 100 × 100 mm; bấm lại vào hộp để bỏ.</p>
+      <div class="unknowns" id="unknownList"></div>
+      <h3 style="font-size:.95rem;margin-top:4px">Sai khác giữa xe thật và firmware</h3>
+      <div class="row"><label for="errL">Xung/mm thật lệch (%) trái</label><input class="field" id="errL" type="number" step="0.1" min="-5" max="5" value="0">
+        <label for="errR">phải</label><input class="field" id="errR" type="number" step="0.1" min="-5" max="5" value="0"></div>
+      <div class="row"><label for="errT">Khoảng cách 2 bánh thật lệch (%)</label><input class="field" id="errT" type="number" step="0.5" min="-10" max="10" value="0"></div>
+      <div class="row"><label for="noise">Nhiễu cảm biến σ (mm)</label><input class="field" id="noise" type="number" step="1" min="0" max="30" value="0"></div>
+    </section>
+
+    <section class="card panel" aria-labelledby="hCalib">
+      <header><h2 id="hCalib">Hiệu chuẩn bánh xe</h2></header>
+      <p class="hint">Hằng số lúc build (phải nạp lại firmware). Đo trên xe thật rồi nhập vào đây.</p>
+      <div class="row"><label for="cpm">Xung encoder / mm</label><input class="field" id="cpm" type="number" step="0.01" min="2" max="8" value="4.5"></div>
+      <div class="row"><label for="track">Khoảng cách 2 bánh (mm)</label><input class="field" id="track" type="number" step="0.5" min="70" max="130" value="90"></div>
+      <h3 style="font-size:.95rem;margin-top:4px">Đo bằng tay (cần kết nối xe, xe đang chờ START)</h3>
+      <div class="row"><label for="calMode">Cách đo</label>
+        <select id="calMode"><option value="push">Đẩy thẳng một đoạn đã đo</option><option value="turn">Xoay tại chỗ</option></select></div>
+      <div class="row" id="calPushRow"><label for="calDist">Quãng đẩy (mm)</label><input class="field" id="calDist" type="number" min="200" max="3000" step="10" value="1000"></div>
+      <div class="row" id="calTurnRow" hidden><label for="calTurns">Số vòng xoay</label><input class="field" id="calTurns" type="number" min="0.5" max="10" step="0.5" value="2"></div>
+      <p class="hint" id="calHelp">Đặt xe trên vạch, bấm Bắt đầu, đẩy xe thẳng bằng tay đúng quãng đã nhập (động cơ tắt), rồi bấm Kết thúc.</p>
+      <div class="row"><button class="btn" id="calStart" disabled>Bắt đầu đo</button><button class="btn" id="calStop" disabled>Kết thúc</button>
+        <button class="btn primary" id="calApply" disabled>Áp dụng kết quả</button></div>
+      <div class="console" id="calOut" style="height:auto;min-height:48px">Chưa đo.</div>
+    </section>
+
+    <section class="card panel" aria-labelledby="hCar">
+      <header><h2 id="hCar">Kết nối xe</h2><span class="pill idle" id="carState">Chưa kết nối</span></header>
+      <div id="serialUnsupported" class="notice" hidden>Trình duyệt này không có Web Serial. Mở file <span class="mono">tools/web/sa_ban.html</span> bằng Chrome hoặc Edge trên máy tính. Bluetooth HC-05 sau khi ghép đôi trên Windows là một cổng COM, chọn nó như dây USB–UART.</div>
+      <div class="row"><label for="baud">Baud</label>
+        <select id="baud"><option value="115200">115200 · dây USB–UART</option><option value="38400">38400 · Bluetooth HC-05</option></select>
+        <button class="btn primary" id="connectBtn">Kết nối</button><button class="btn" id="disconnectBtn" disabled>Ngắt</button></div>
+      <div class="row">
+        <button class="btn" id="getBtn" disabled>Đọc tham số</button>
+        <button class="btn" id="sendBtn" disabled>Gửi tham số</button>
+        <button class="btn small" id="pullBtn" disabled title="Chép giá trị trên xe vào thanh trượt">Lấy giá trị xe</button>
+      </div>
+      <div class="row">
+        <button class="btn" id="startBtn" disabled>START</button>
+        <button class="btn stop" id="stopBtn" disabled>DỪNG XE</button>
+        <button class="btn small" id="rebootBtn" disabled>Khởi động lại</button>
+        <button class="btn small" id="carDefaultsBtn" disabled>Mặc định trên xe</button>
+      </div>
+      <p class="hint">Phím <span class="mono">Esc</span> = DỪNG XE khi đang kết nối. Tham số chỉ đổi được khi xe không chạy.</p>
+      <div class="console" id="console" aria-live="polite"></div>
+      <form class="row" id="rawForm"><input class="field" style="flex:1;width:auto;text-align:left" id="rawCmd" placeholder="$PING" aria-label="Lệnh gửi xe"><button class="btn small" type="submit" id="rawSend" disabled>Gửi</button><button class="btn small" type="button" id="saveLog" disabled>Lưu log</button></form>
+    </section>
+
+    <section class="card panel" aria-labelledby="hLog">
+      <header><h2 id="hLog">Mở log</h2></header>
+      <p class="hint">Log UART đã lưu (.csv/.txt) từ xe hoặc từ mô phỏng C++.</p>
+      <input type="file" id="logFile" accept=".csv,.txt,.log,text/plain" aria-label="Chọn file log">
+      <div class="row"><label for="logRun">Lượt</label><select id="logRun" disabled><option>—</option></select></div>
+    </section>
+
+    <section class="card panel" aria-labelledby="hExport">
+      <header><h2 id="hExport">Xuất cấu hình</h2><button class="btn small" id="copyFlags">Chép</button></header>
+      <p class="hint">Dán vào <span class="mono">build_flags</span> của <span class="mono">[env:test_static_route]</span> trong <span class="mono">platformio.ini</span> để giá trị thành mặc định khi khởi động.</p>
+      <textarea id="flags" readonly aria-label="build_flags"></textarea>
+    </section>
+  </aside>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="sim.js"></script>
+<script src="uart.js"></script>
+<script src="vendor/chart.umd.min.js" onerror="this.remove()"></script>
+<script>
+if (!window.Chart) document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"><\/script>');
+</script>
+<script>
+'use strict';
+const S = window.SaBanSim, U = window.SaBanUart, $ = id => document.getElementById(id);
+const fmt = (v, d = 0) => Number.isFinite(v) ? v.toLocaleString('vi-VN', {minimumFractionDigits: d, maximumFractionDigits: d}) : '—';
+const store = {get(k, d) { try { const v = localStorage.getItem('saban.' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+               set(k, v) { try { localStorage.setItem('saban.' + k, JSON.stringify(v)); } catch {} }};
+let toastTimer = 0;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600); }
+
+// ---------- parameters ----------
+const PARAM_UI = {
+  CRUISE_CPS:   {label: 'Tốc độ chạy', unit: 'CPS/bánh', step: 10, note: 'đường thẳng; firmware cho 200–700'},
+  APPROACH_CPS: {label: 'Tốc độ gần đích', unit: 'CPS', step: 10, note: 'trong 65 mm cuối'},
+  AVOID_CPS:    {label: 'Tốc độ khi né', unit: 'CPS', step: 10, note: 'trong vùng dịch ngang'},
+  LAT_ACCEL:    {label: 'Gia tốc ngang khi cua', unit: 'mm/s²', step: 10, note: 'nhỏ = vào cua chậm hơn'},
+  LATERAL_GAIN: {label: 'Hệ số kéo về đường', unit: '×10⁻⁴/mm²', step: 0.1, scale: 1e-4, note: 'lớn = sửa lệch ngang gắt hơn'},
+  HEADING_GAIN: {label: 'Hệ số sửa hướng', unit: '1/mm', step: 0.001, note: 'giảm dao động khi bám đường'},
+  FILLET_MM:    {label: 'Bán kính ôm cua', unit: 'mm', step: 5, note: 'áp dụng ở lần START sau'},
+  SAFE_MARGIN:  {label: 'Khe an toàn thân xe', unit: 'mm', step: 1, note: 'thân xe ↔ hộp khi lập đường né'},
+  DETECT_MM:    {label: 'Tầm nhận vật', unit: 'mm', step: 10, note: 'bỏ qua tiếng vọng xa hơn'},
+  GYRO_SCALE:   {label: 'Hệ số gyro', unit: '×', step: 0.0005, note: 'từ bước Hiệu chỉnh → Xoay tại chỗ'},
+  START_FIX:    {label: 'Tự tìm vị trí xuất phát', unit: '0/1', step: 1, note: 'khớp 4 tia VL53 với hộp cố định'},
+  RANGE_FIX:    {label: 'Sửa vị trí khi chạy', unit: '0/1', step: 1, note: 'tia trúng hộp cố định → chỉnh x, y, góc'},
+  SYNC_GAIN:    {label: 'Đồng bộ 2 bánh', unit: '1/s', step: 0.5, note: 'bù bánh bị tụt xung (0 = tắt)'},
+};
+const tune = Object.assign(S.defaultTune(), store.get('tune', {}));
+const carParams = {};
+function shown(p, v) { const sc = PARAM_UI[p.name].scale || 1; return +(v/sc).toFixed(6); }
+function buildParams() {
+  const box = $('params');
+  for (const p of S.TUNE) {
+    const ui = PARAM_UI[p.name], sc = ui.scale || 1;
+    const el = document.createElement('div');
+    el.className = 'param'; el.dataset.name = p.name;
+    el.innerHTML = `<label for="p-${p.name}">${ui.label}</label>
+      <span class="val"><input type="number" id="n-${p.name}" min="${p.lo/sc}" max="${p.hi/sc}" step="${ui.step}" aria-label="${ui.label} (${ui.unit})"><span class="mono" style="font-size:.75rem;color:var(--muted)">${ui.unit}</span></span>
+      <input type="range" id="p-${p.name}" min="${p.lo/sc}" max="${p.hi/sc}" step="${ui.step}">
+      <span class="meta"><span>${p.name} · ${ui.note}</span><span class="car" id="c-${p.name}"></span></span>`;
+    box.appendChild(el);
+    const range = el.querySelector('input[type=range]'), number = el.querySelector('input[type=number]');
+    const set = (v, from) => {
+      v = Math.min(p.hi/sc, Math.max(p.lo/sc, +v));
+      if (!Number.isFinite(v)) return;
+      tune[p.key] = +(v*sc).toPrecision(6);
+      if (from !== range) range.value = v;
+      if (from !== number) number.value = v;
+      paramState(p); scheduleSim(); updateFlags(); store.set('tune', tune);
+    };
+    range.addEventListener('input', () => set(range.value, range));
+    number.addEventListener('change', () => set(number.value, number));
+    range.value = number.value = shown(p, tune[p.key]);
+    paramState(p);
+  }
+}
+function paramState(p) {
+  const el = document.querySelector(`.param[data-name="${p.name}"]`);
+  el.classList.toggle('changed', Math.abs(tune[p.key]-p.def) > Math.abs(p.def)*1e-6);
+  const c = $('c-' + p.name), cv = carParams[p.name];
+  if (cv === undefined) { c.textContent = ''; c.className = 'car'; return; }
+  const same = Math.abs(cv - tune[p.key]) <= Math.max(1e-9, Math.abs(cv)*1e-4);
+  c.textContent = 'xe: ' + shown(p, cv); c.className = 'car ' + (same ? 'same' : 'diff');
+}
+function setParam(name, value) {
+  const p = S.TUNE.find(t => t.name === name); if (!p) return;
+  tune[p.key] = value;
+  $('p-' + name).value = $('n-' + name).value = shown(p, value);
+  paramState(p);
+}
+$('resetParams').onclick = () => { for (const p of S.TUNE) setParam(p.name, p.def); scheduleSim(); updateFlags(); store.set('tune', tune); };
+
+// ---------- scenario ----------
+const scen = Object.assign({random: 0, unknown: [], errL: 0, errR: 0, errT: 0, noise: 0, cpm: 4.5, track: 90}, store.get('scen', {}));
+function bindField(id, key) {
+  const el = $(id); el.value = scen[key];
+  el.addEventListener('change', () => { const v = +el.value; if (Number.isFinite(v)) { scen[key] = Math.min(+el.max, Math.max(+el.min, v)); el.value = scen[key]; store.set('scen', scen); scheduleSim(); updateFlags(); } });
+}
+['errL', 'errR', 'errT', 'noise', 'cpm', 'track'].forEach(k => bindField(k, k));
+$('randomSel').value = scen.random;
+$('randomSel').onchange = e => { scen.random = +e.target.value; store.set('scen', scen); scheduleSim(); };
+let placing = false;
+$('placeBtn').onclick = () => { placing = !placing; $('placeBtn').setAttribute('aria-pressed', placing); $('placeBtn').classList.toggle('primary', placing); $('map').classList.toggle('placing', placing); if (placing) showSource('sim'); };
+$('clearUnknown').onclick = () => { scen.unknown = []; unknownChanged(); };
+$('exBlock').onclick = () => { scen.unknown = [{x: 1510, y: 307}]; scen.random = 0; $('randomSel').value = 0; unknownChanged(); };
+$('exCenter').onclick = () => { scen.unknown = [{x: 362, y: 652}]; unknownChanged(); };
+function unknownChanged() {
+  const list = $('unknownList'); list.innerHTML = '';
+  scen.unknown.forEach((u, i) => {
+    const s = document.createElement('span');
+    s.innerHTML = `(${Math.round(u.x)}, ${Math.round(u.y)})<button aria-label="Bỏ vật này">×</button>`;
+    s.querySelector('button').onclick = () => { scen.unknown.splice(i, 1); unknownChanged(); };
+    list.appendChild(s);
+  });
+  store.set('scen', scen); scheduleSim();
+}
+
+// ---------- simulation ----------
+let simTimer = 0, simRun = null;
+function scheduleSim() { clearTimeout(simTimer); simTimer = setTimeout(runSim, 120); }
+function runSim() {
+  const out = S.simulate({tune: Object.assign({}, tune), countsPerMm: [scen.cpm, scen.cpm], track: scen.track,
+    random: scen.random, unknown: scen.unknown, trueCpmErr: [scen.errL, scen.errR], trueTrackErr: scen.errT,
+    rangeNoise: scen.noise, seed: 7});
+  simRun = normalizeSim(out);
+  if (source === 'sim') { setRun(simRun, true); }
+}
+function normalizeSim(out) {
+  const PH = ['ALIGN', 'TRACK', 'AVOID', 'SETTLE'], cpm = scen.cpm;
+  const samples = out.trace.map(r => ({t: r[0], tx: r[1], ty: r[2], th: r[3], x: r[4], y: r[5], h: r[6], v: r[7], s: r[8],
+    off: r[9], cross: r[10], angleErr: r[11], tl: r[12], tr: r[13], al: r[14], ar: r[15], spdL: r[14]/cpm, spdR: r[15]/cpm,
+    phase: PH[r[16]], r: [r[17], r[18], r[19], r[20]]}));
+  const avoids = [];
+  for (const e of out.events) if (e.type === 'AVOID') {
+    const i = avoids.findIndex(a => a.id === e.id && Math.abs(a.s0-e.s0) < 1);
+    if (i >= 0) avoids[i] = e; else avoids.push(e);
+  }
+  return {kind: 'sim', path: withStations(out.path), samples, events: out.events, avoids,
+          obstacles: out.events.filter(e => e.type === 'OBSTACLE'), world: out.world, result: out.result};
+}
+function withStations(segs) {
+  let s = 0; const out = [];
+  for (const g of segs) { if (!g) continue; out.push(Object.assign({}, g, {s0: s})); s += g.len; }
+  return out;
+}
+
+// ---------- view state ----------
+let source = 'sim', run = null, playT = 0, playing = false, playSpeed = 2, followLive = true;
+function showSource(src) {
+  source = src;
+  for (const [id, s] of [['tab-sim', 'sim'], ['tab-car', 'car'], ['tab-log', 'log']]) $(id).setAttribute('aria-selected', s === src);
+  $('boardTitle').textContent = src === 'sim' ? 'Mô phỏng · lượt chạy hiện tại' : src === 'car' ? 'Xe thật · dữ liệu trực tiếp' : 'Log đã lưu';
+  if (src === 'sim') setRun(simRun, true);
+  else if (src === 'car') setRun(liveRun(), false);
+  else setRun(logRun, false);
+}
+$('tab-sim').onclick = () => showSource('sim');
+$('tab-car').onclick = () => showSource('car');
+$('tab-log').onclick = () => showSource('log');
+function setRun(r, autoplay) {
+  run = r; playT = 0; followLive = source === 'car';
+  if (run && run.samples.length && source !== 'car') playT = autoplay ? 0 : run.samples[run.samples.length-1].t;
+  if (run && source === 'car' && run.samples.length) playT = run.samples[run.samples.length-1].t;
+  playing = !!(autoplay && run && run.samples.length);
+  updateVerdict(); updateEvents(); updateCharts(true); updatePlayUi(); draw();
+}
+function endT() { return run && run.samples.length ? run.samples[run.samples.length-1].t : 0; }
+function sampleAt(t) {
+  const a = run.samples; if (!a.length) return null;
+  let lo = 0, hi = a.length-1;
+  while (lo < hi) { const m = (lo+hi+1) >> 1; if (a[m].t <= t) lo = m; else hi = m-1; }
+  return a[lo];
+}
+
+// ---------- playback ----------
+$('playBtn').onclick = () => { if (!run) return; if (playT >= endT()) playT = 0; playing = !playing; followLive = false; updatePlayUi(); };
+$('scrub').addEventListener('input', e => { playT = endT()*e.target.value/1000; playing = false; followLive = false; updatePlayUi(); draw(); updateCharts(false); });
+document.querySelectorAll('.seg button').forEach(b => b.onclick = () => {
+  playSpeed = +b.dataset.speed; document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', x === b));
+});
+function updatePlayUi() {
+  $('playBtn').textContent = playing ? '❚❚ Dừng' : '▶ Phát';
+  const e = endT(); $('scrub').value = e ? Math.round(1000*playT/e) : 0;
+  $('timeLabel').textContent = `${fmt(playT/1000, 1)} / ${fmt(e/1000, 1)} s`;
+}
+let lastFrame = 0, chartTick = 0;
+function frame(ts) {
+  const dt = lastFrame ? Math.min(100, ts-lastFrame) : 16; lastFrame = ts;
+  if (playing && run) {
+    playT += dt*playSpeed;
+    if (playT >= endT()) { playT = endT(); playing = false; }
+    updatePlayUi(); draw();
+    if (++chartTick % 6 === 0) updateCharts(false);
+  }
+  requestAnimationFrame(frame);
+}
+
+// ---------- drawing ----------
+const VIEW = {x0: -60, x1: 1860, y0: -240, y1: 1250};
+const canvas = $('map'), ctx = canvas.getContext('2d');
+let col = {}, scale = 1, dpr = 1;
+function readColors() {
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of ['bg', 'panel', 'ink', 'muted', 'line', 'board', 'grid', 'tape', 'route', 'avoid', 'accent', 'random', 'unknown', 'box', 'danger', 'ok', 'warn'])
+    col[k] = cs.getPropertyValue('--' + k).trim();
+}
+function resize() {
+  dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth || 800, h = w*(VIEW.y1-VIEW.y0)/(VIEW.x1-VIEW.x0);
+  canvas.width = Math.round(w*dpr); canvas.height = Math.round(h*dpr); canvas.style.height = h + 'px';
+  scale = w/(VIEW.x1-VIEW.x0); draw();
+}
+const X = x => (x-VIEW.x0)*scale, Y = y => (VIEW.y1-y)*scale;
+function rectBox(x, y, half, fill, stroke, dash) {
+  ctx.beginPath(); ctx.rect(X(x-half), Y(y+half), 2*half*scale, 2*half*scale);
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke) { ctx.setLineDash(dash || []); ctx.strokeStyle = stroke; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]); }
+}
+function label(text, x, y, color, align = 'center', size = 11) {
+  ctx.font = `600 ${size}px ${getComputedStyle(document.body).getPropertyValue('--font-mono') || 'monospace'}`;
+  ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.fillText(text, X(x), Y(y));
+}
+function pathAt(segs, s) {
+  let g = segs[0];
+  for (const seg of segs) if (s >= seg.s0) g = seg;
+  return S.Path.eval(g, Math.max(0, Math.min(g.len, s-g.s0)));
+}
+function profile(a, s) {
+  if (s <= a.s0 || s >= a.s3) return 0;
+  if (s >= a.s1 && s <= a.s2) return a.offset;
+  return s < a.s1 ? a.offset*0.5*(1-Math.cos(Math.PI*(s-a.s0)/(a.s1-a.s0))) : a.offset*0.5*(1+Math.cos(Math.PI*(s-a.s2)/(a.s3-a.s2)));
+}
+function strokePolyline(pts, color, width, dash) {
+  if (pts.length < 2) return;
+  ctx.beginPath(); ctx.moveTo(X(pts[0][0]), Y(pts[0][1]));
+  for (let i = 1; i < pts.length; ++i) ctx.lineTo(X(pts[i][0]), Y(pts[i][1]));
+  ctx.setLineDash(dash || []); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.lineJoin = 'round'; ctx.stroke(); ctx.setLineDash([]);
+}
+function drawCar(x, y, h, color, ghost, ranges) {
+  const L = S.BodyHalfLength, W = S.BodyHalfWidth, c = Math.cos(h), s = Math.sin(h);
+  const pts = [[L, W], [-L, W], [-L, -W], [L, -W]].map(([a, b]) => [x + a*c - b*s, y + a*s + b*c]);
+  if (ranges) S.MOUNTS.forEach((m, i) => {
+    const ox = x + m.forward*c - m.left*s, oy = y + m.forward*s + m.left*c, d = ranges[i];
+    const len = Number.isFinite(d) && d >= 0 ? d : tune.detectMm, bh = h + m.yaw;
+    ctx.beginPath(); ctx.moveTo(X(ox), Y(oy)); ctx.lineTo(X(ox + len*Math.cos(bh)), Y(oy + len*Math.sin(bh)));
+    ctx.strokeStyle = Number.isFinite(d) && d >= 0 ? col.danger : col.muted; ctx.globalAlpha = d >= 0 ? .85 : .25;
+    ctx.lineWidth = 1.2; ctx.setLineDash(d >= 0 ? [] : [3, 4]); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+    if (d >= 0) { ctx.beginPath(); ctx.arc(X(ox + d*Math.cos(bh)), Y(oy + d*Math.sin(bh)), 2.5, 0, 7); ctx.fillStyle = col.danger; ctx.fill(); }
+  });
+  ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1]))); ctx.closePath();
+  if (!ghost) { ctx.fillStyle = color; ctx.globalAlpha = .28; ctx.fill(); ctx.globalAlpha = 1; }
+  ctx.setLineDash(ghost ? [4, 3] : []); ctx.strokeStyle = color; ctx.lineWidth = ghost ? 1.2 : 2; ctx.stroke(); ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(X(x), Y(y)); ctx.lineTo(X(x + 0.9*L*c), Y(y + 0.9*L*s)); ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+}
+function draw() {
+  if (!col.ink) readColors();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const w = canvas.width/dpr, h = canvas.height/dpr;
+  ctx.fillStyle = col.board; ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = col.grid; ctx.lineWidth = 1;
+  for (let x = 0; x <= 1800; x += 100) { ctx.beginPath(); ctx.moveTo(X(x), Y(-200)); ctx.lineTo(X(x), Y(1200)); ctx.stroke(); }
+  for (let y = -200; y <= 1200; y += 100) { ctx.beginPath(); ctx.moveTo(X(0), Y(y)); ctx.lineTo(X(1800), Y(y)); ctx.stroke(); }
+  for (let x = 0; x <= 1800; x += 300) label(String(x), x, -225, col.muted, 'center', 10);
+  for (let y = 0; y <= 1200; y += 300) label(String(y), -32, y, col.muted, 'center', 10);
+  // Forbidden zone (hatched)
+  const f = S.MAP.forbidden;
+  ctx.save(); ctx.beginPath(); ctx.rect(X(f.xmin), Y(f.ymax), (f.xmax-f.xmin)*scale, (f.ymax-f.ymin)*scale); ctx.clip();
+  ctx.strokeStyle = col.muted; ctx.globalAlpha = .28; ctx.lineWidth = 1;
+  for (let d = -1200; d < 1800; d += 40) { ctx.beginPath(); ctx.moveTo(X(f.xmin+d), Y(f.ymin)); ctx.lineTo(X(f.xmin+d+600), Y(f.ymax)); ctx.stroke(); }
+  ctx.restore(); ctx.globalAlpha = 1;
+  label('VÙNG CẤM', 900, 300, col.muted, 'center', 12);
+  // Taped boundary, start and finish lines
+  ctx.strokeStyle = col.tape; ctx.lineWidth = 3; ctx.strokeRect(X(0), Y(1200), 1800*scale, 1200*scale);
+  ctx.lineWidth = 5; ctx.strokeStyle = col.ok;
+  ctx.beginPath(); ctx.moveTo(X(0), Y(0)); ctx.lineTo(X(600), Y(0)); ctx.stroke();
+  ctx.strokeStyle = col.accent; ctx.beginPath(); ctx.moveTo(X(1200), Y(0)); ctx.lineTo(X(1800), Y(0)); ctx.stroke();
+  label('VẠCH XUẤT PHÁT', 300, -150, col.ok, 'center', 10); label('VẠCH ĐÍCH', 1500, -170, col.accent, 'center', 10);
+  // Boxes
+  for (const o of S.MAP.fixed) { rectBox(o.x, o.y, 50, col.box); label(String(o.id), o.x, o.y, col.panel, 'center', 10); }
+  const present = run && run.world ? run.world : [];
+  for (const o of S.MAP.possible) {
+    const here = present.some(b => b.kind === 'R' && b.id === o.id) || (run && run.obstacles.some(b => b.kind === 'RANDOM' && b.id === o.id));
+    rectBox(o.x, o.y, 50, here ? col.random : null, here ? null : col.random, [5, 4]);
+    label(String(o.id), o.x, o.y, here ? col.panel : col.random, 'center', 10);
+  }
+  for (const b of present) if (b.kind === 'U') rectBox(b.x, b.y, 50, col.unknown, null);
+  if (source === 'sim' && !run) for (const u of scen.unknown) rectBox(u.x, u.y, 50, col.unknown, null);
+  // Route polyline + nodes
+  const R = S.MAP.route;
+  strokePolyline(R.map(p => [p.x, p.y]), col.route, 1.5, [7, 6]);
+  ['START', 'N1', 'N2', 'N3', 'GOAL'].forEach((n, i) => {
+    ctx.beginPath(); ctx.arc(X(R[i].x), Y(R[i].y), 4, 0, 7); ctx.fillStyle = col.route; ctx.fill();
+    label(n, R[i].x + (i === 1 ? -40 : 40), R[i].y + 22, col.route, 'center', 11);
+  });
+  ctx.beginPath(); ctx.arc(X(S.MAP.goal.x), Y(S.MAP.goal.y), 12*scale, 0, 7); ctx.strokeStyle = col.route; ctx.lineWidth = 1; ctx.stroke();
+  if (!run) return;
+  const cur = sampleAt(playT);
+  // Smooth reference
+  if (run.path.length) {
+    const len = run.path[run.path.length-1].s0 + run.path[run.path.length-1].len, pts = [];
+    for (let s = 0; s <= len; s += 8) { const p = pathAt(run.path, s); pts.push([p.x, p.y]); }
+    strokePolyline(pts, col.route, 2.2);
+    for (const a of run.avoids) {
+      if (a.t > playT && source !== 'sim') continue;
+      const dp = [];
+      for (let s = a.s0; s <= a.s3; s += 6) { const p = pathAt(run.path, s), d = profile(a, s); dp.push([p.x - Math.sin(p.h)*d, p.y + Math.cos(p.h)*d]); }
+      strokePolyline(dp, col.avoid, 2.6);
+    }
+  }
+  // Trajectories up to the playback time
+  const upto = run.samples.filter(s => s.t <= playT);
+  if (run.kind === 'sim') strokePolyline(upto.map(s => [s.tx, s.ty]), col.accent, 2.2);
+  strokePolyline(upto.map(s => [s.x, s.y]), col.accent, 1.4, run.kind === 'sim' ? [2, 3] : []);
+  // Detected obstacles so far
+  for (const o of run.obstacles) {
+    if (o.t > playT) continue;
+    const c = o.kind === 'UNKNOWN' ? col.unknown : o.kind === 'RANDOM' ? col.random : col.muted;
+    ctx.strokeStyle = c; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(X(o.x-18), Y(o.y-18)); ctx.lineTo(X(o.x+18), Y(o.y+18)); ctx.moveTo(X(o.x-18), Y(o.y+18)); ctx.lineTo(X(o.x+18), Y(o.y-18)); ctx.stroke();
+  }
+  if (run.result && run.result.collision) {
+    const t = run.result.collision.t, s = sampleAt(t);
+    if (s && t <= playT) { ctx.beginPath(); ctx.arc(X(s.tx), Y(s.ty), 26*scale+6, 0, 7); ctx.strokeStyle = col.danger; ctx.lineWidth = 3; ctx.stroke(); }
+  }
+  if (cur) {
+    if (run.kind === 'sim') { drawCar(cur.x, cur.y, cur.h, col.accent, true); drawCar(cur.tx, cur.ty, cur.th, col.accent, false, cur.r); }
+    else drawCar(cur.x, cur.y, cur.h, col.accent, false, cur.r);
+  }
+}
+canvas.addEventListener('mousemove', e => {
+  const r = canvas.getBoundingClientRect(), x = (e.clientX-r.left)/scale + VIEW.x0, y = VIEW.y1 - (e.clientY-r.top)/scale;
+  $('cursorPos').textContent = `x ${Math.round(x)} · y ${Math.round(y)} mm`;
+});
+canvas.addEventListener('click', e => {
+  if (!placing) return;
+  const r = canvas.getBoundingClientRect();
+  const x = Math.round(((e.clientX-r.left)/scale + VIEW.x0)/5)*5, y = Math.round((VIEW.y1 - (e.clientY-r.top)/scale)/5)*5;
+  const hit = scen.unknown.findIndex(u => Math.abs(u.x-x) <= 50 && Math.abs(u.y-y) <= 50);
+  if (hit >= 0) scen.unknown.splice(hit, 1);
+  else if (x >= 50 && x <= 1750 && y >= 50 && y <= 1150) scen.unknown.push({x, y});
+  else { toast('Đặt vật trong sa bàn (cách mép ≥ 50 mm).'); return; }
+  unknownChanged();
+});
+
+// ---------- verdict, stats, events ----------
+const REASON = {
+  GOAL_REACHED: 'Về đích, dừng trong vòng 12 mm', RUNNING: 'Đang chạy', NO_AVOID_PATH: 'Vật chắn đường, không có khe đủ rộng: dừng an toàn từ xa',
+  OBSTACLE_TOO_CLOSE: 'Thấy vật quá muộn để lượn: dừng', OBSTACLE_STOP: 'Dừng khẩn: tia thẳng thấy vật quá gần',
+  OBSTACLE_MAP_FULL: 'Bộ nhớ vật cản đầy', RANGE_STALE: 'Mất dữ liệu cảm biến VL53L0X', OFF_PATH: 'Lệch khỏi đường > 100 mm',
+  MISSED_WAYPOINT: 'Qua đích nhưng lệch quá 12 mm', NO_TRACK_PROGRESS: 'Không tiến được 4,5 s', NOT_SETTLED: 'Không đứng yên được ở đích',
+  GYRO_ENCODER_DISAGREE: 'Gyro và encoder báo góc quay khác nhau', WHEEL_SLIP: 'Trượt bánh', MANUAL_SW1: 'Dừng bằng nút SW1',
+  REMOTE_STOP: 'Dừng từ web', SIM_TIMEOUT: 'Mô phỏng quá 120 s', CONTROL_TIMEOUT: 'Vòng điều khiển trễ (watchdog)',
+  WHEEL_L_STALL_DIR: 'Bánh trái kẹt hoặc quay ngược', WHEEL_R_STALL_DIR: 'Bánh phải kẹt hoặc quay ngược', TURN_NO_PROGRESS: 'Không xoay được',
+};
+function stat(label, value, cls) { return `<div class="stat ${cls || ''}"><b>${value}</b><span>${label}</span></div>`; }
+function updateVerdict() {
+  const pill = $('verdictPill'), why = $('verdictWhy'), st = $('stats');
+  if (!run) { pill.className = 'pill idle'; pill.textContent = source === 'car' ? 'Chưa có dữ liệu' : 'Chưa chạy'; why.textContent = ''; st.innerHTML = ''; return; }
+  const avoids = run.avoids.length;
+  if (run.kind === 'sim') {
+    const r = run.result, ok = r.ok && !r.collision;
+    pill.className = 'pill ' + (ok ? 'ok' : 'bad'); pill.textContent = r.collision ? 'VA CHẠM' : r.reason;
+    why.textContent = r.collision ? `Thân xe chạm ${r.collision.box.kind === 'FORBIDDEN' ? 'vùng cấm' : 'hộp ' + (r.collision.box.id || 'lạ')} ở ${fmt(r.collision.t/1000, 1)} s` : (REASON[r.reason] || r.reason);
+    const gapCls = r.minBodyGap < 5 ? 'bad' : r.minBodyGap < tune.safeMarginMm ? 'warn' : '';
+    const gapBox = r.minBodyGapAt && r.minBodyGapAt.box ? (r.minBodyGapAt.box.kind === 'F' ? ' · hộp ' + r.minBodyGapAt.box.id : r.minBodyGapAt.box.kind === 'R' ? ' · ô ' + r.minBodyGapAt.box.id : ' · vật lạ') : '';
+    st.innerHTML = stat('Thời gian', fmt(r.timeMs/1000, 2) + ' s') + stat('Quãng đường', fmt(r.distance) + ' mm') +
+      stat('Sai số đích (xe tự đo)', fmt(r.goalErrorEst, 1) + ' mm') +
+      stat('Sai số đích thật', fmt(r.goalErrorTrue, 1) + ' mm', r.goalErrorTrue > 12 ? 'warn' : '') +
+      stat('Khe thân xe nhỏ nhất' + gapBox, fmt(Math.max(0, r.minBodyGap), 1) + ' mm', gapCls) +
+      stat('Lệch ngang tối đa', fmt(r.maxCross, 1) + ' mm') + stat('Lần né', String(avoids));
+  } else {
+    const reason = run.meta.STOP_REASON, ended = !!run.end || !!reason, ok = reason === 'GOAL_REACHED';
+    pill.className = 'pill ' + (!ended ? 'idle' : ok ? 'ok' : 'bad'); pill.textContent = ended ? (reason || run.end) : 'Đang chạy';
+    why.textContent = ended ? (REASON[reason] || '') : `${run.samples.length} mẫu`;
+    const last = run.samples[run.samples.length-1] || {};
+    const maxCross = run.samples.reduce((m, s) => Math.max(m, Math.abs(s.cross || 0)), 0);
+    const goal = Number.isFinite(+run.meta.GOAL_ERROR_MM) ? +run.meta.GOAL_ERROR_MM : Math.hypot((last.x||0)-S.MAP.goal.x, (last.y||0)-S.MAP.goal.y);
+    st.innerHTML = stat('Thời gian', fmt((+run.meta.TOTAL_TIME_MS || last.t || 0)/1000, 2) + ' s') +
+      stat('Quãng đường', fmt(+run.meta.TOTAL_DISTANCE_MM || last.s || 0) + ' mm') + stat('Sai số đích (xe tự đo)', fmt(goal, 1) + ' mm') +
+      stat('Lệch ngang tối đa', fmt(+run.meta.MAX_CROSS_TRACK_ERROR_MM || maxCross, 1) + ' mm') + stat('Lần né', String(avoids)) +
+      stat('Vòng điều khiển lâu nhất', run.meta.MAX_CONTROL_US ? fmt(+run.meta.MAX_CONTROL_US/1000, 2) + ' ms' : '—', +run.meta.MAX_CONTROL_US > 8000 ? 'warn' : '') +
+      stat('Mẫu UART bị rơi', run.meta.DROPPED_SAMPLES || '0', +run.meta.DROPPED_SAMPLES ? 'warn' : '');
+  }
+}
+function describe(e) {
+  switch (e.type) {
+    case 'OBSTACLE': return [e.kind === 'FIXED' ? 'Hộp cố định' : e.kind === 'RANDOM' ? 'Vật ngẫu nhiên' : 'Vật lạ',
+      `${e.kind === 'UNKNOWN' ? '' : '#' + e.id + ' '}(${fmt(e.x)}, ${fmt(e.y)})${e.s >= 0 ? ` · cách đường ${fmt(Math.abs(e.lat))} mm` : ''}`];
+    case 'AVOID': return [e.final ? 'Chốt né' : 'Lập đường né', `${e.side === 'LEFT' ? 'trái' : 'phải'} ${fmt(Math.abs(e.offset), 1)} mm · s ${fmt(e.s0)}→${fmt(e.s3)} mm`];
+    case 'AVOID_FAIL': return ['Không né được', e.reason];
+    case 'WAYPOINT': return ['Qua node', ['START', 'N1', 'N2', 'N3', 'GOAL'][e.node] || e.node];
+    case 'WAYPOINT_START': return null;
+    case 'END': return [e.event === 'ROUTE_FINISHED' ? 'Kết thúc' : 'Dừng', e.reason || (run.meta && run.meta.STOP_REASON) || e.event];
+    default: return [e.type, ''];
+  }
+}
+function updateEvents() {
+  const ol = $('events'); ol.innerHTML = '';
+  if (!run) return;
+  for (const e of run.events) {
+    const d = describe(e); if (!d) continue;
+    const li = document.createElement('li');
+    li.className = 't-' + e.type + (e.type === 'END' && !/FINISHED/.test(e.event) ? ' bad' : '');
+    li.innerHTML = `<span class="mono">${fmt((e.t||0)/1000, 2)} s</span><span class="tag">${d[0]}</span><span>${d[1]}</span>`;
+    li.onclick = () => { playT = e.t || 0; playing = false; followLive = false; updatePlayUi(); draw(); updateCharts(false); };
+    ol.appendChild(li);
+  }
+}
+
+// ---------- charts (Chart.js; the board works without it) ----------
+const charts = {};
+const cursorPlugin = {id: 'cursor', afterDatasetsDraw(chart) {
+  if (!run) return;
+  const x = chart.scales.x.getPixelForValue(playT/1000), {top, bottom} = chart.chartArea, c = chart.ctx;
+  c.save(); c.strokeStyle = col.accent; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x, top); c.lineTo(x, bottom); c.stroke(); c.restore();
+}};
+function makeChart(id, sets) {
+  const el = $(id);
+  if (!window.Chart) { el.parentElement.innerHTML = '<p class="nochart">Biểu đồ cần Chart.js: kết nối Internet, hoặc chép chart.umd.min.js vào tools/web/vendor/.</p>'; return null; }
+  return new Chart(el, {type: 'line', data: {datasets: sets.map(s => ({label: s.label, data: [], borderColor: col[s.color], backgroundColor: col[s.color],
+      borderWidth: s.width || 1.6, borderDash: s.dash || [], pointRadius: 0, tension: 0, parsing: false}))},
+    options: {animation: false, responsive: true, maintainAspectRatio: false, normalized: true,
+      interaction: {mode: 'nearest', axis: 'x', intersect: false},
+      plugins: {legend: {labels: {boxWidth: 12, boxHeight: 2, color: col.muted, font: {size: 11}}}, decimation: {enabled: true, algorithm: 'lttb', samples: 400}},
+      scales: {x: {type: 'linear', title: {display: true, text: 's', color: col.muted}, ticks: {color: col.muted}, grid: {color: col.grid}},
+               y: {ticks: {color: col.muted}, grid: {color: col.grid}}}},
+    plugins: [cursorPlugin]});
+}
+function initCharts() {
+  charts.speed = makeChart('chSpeed', [{label: 'xe', color: 'accent', width: 2}, {label: 'bánh trái', color: 'route', dash: [4, 3]}, {label: 'bánh phải', color: 'avoid', dash: [4, 3]}]);
+  charts.cross = makeChart('chCross', [{label: 'lệch ngang', color: 'accent', width: 2}, {label: 'dịch né', color: 'avoid'}]);
+  charts.cps = makeChart('chCps', [{label: 'đặt T', color: 'route', dash: [5, 3]}, {label: 'thực T', color: 'route'}, {label: 'đặt P', color: 'avoid', dash: [5, 3]}, {label: 'thực P', color: 'avoid'}]);
+}
+function updateCharts(full) {
+  if (!charts.speed) return;
+  if (full) {
+    const a = run ? run.samples : [], step = Math.max(1, Math.floor(a.length/1500));
+    const pick = f => { const out = []; for (let i = 0; i < a.length; i += step) { const v = f(a[i]); if (Number.isFinite(v)) out.push({x: a[i].t/1000, y: v}); } return out; };
+    const sets = [[charts.speed, [s => run.kind === 'sim' ? s.v : s.v, s => s.spdL, s => s.spdR]],
+                  [charts.cross, [s => s.cross, s => s.off]],
+                  [charts.cps, [s => s.tl, s => s.al, s => s.tr, s => s.ar]]];
+    for (const [ch, fs] of sets) { fs.forEach((f, i) => ch.data.datasets[i].data = run ? pick(f) : []); }
+  }
+  for (const ch of Object.values(charts)) if (ch) ch.update('none');
+}
+function recolorCharts() {
+  for (const ch of Object.values(charts)) {
+    if (!ch) continue;
+    const map = {speed: ['accent', 'route', 'avoid'], cross: ['accent', 'avoid'], cps: ['route', 'route', 'avoid', 'avoid']};
+    const key = Object.keys(charts).find(k => charts[k] === ch);
+    ch.data.datasets.forEach((d, i) => { d.borderColor = d.backgroundColor = col[map[key][i]]; });
+    for (const ax of ['x', 'y']) { ch.options.scales[ax].ticks.color = col.muted; ch.options.scales[ax].grid.color = col.grid; }
+    ch.options.plugins.legend.labels.color = col.muted; ch.update('none');
+  }
+}
+
+// ---------- car link (Web Serial: USB-UART or HC-05 Bluetooth COM port) ----------
+let port = null, reader = null, writer = null, readLoop = null, live = null, rxLines = [];
+const hasSerial = 'serial' in navigator;
+if (!hasSerial) { $('serialUnsupported').hidden = false; $('connectBtn').disabled = true; }
+$('baud').value = String(store.get('baud', 115200));
+function liveRun() { return live && live.run ? live.run : null; }
+function logLine(text, cls) {
+  const c = $('console'), d = document.createElement('div');
+  if (cls) d.className = cls; d.textContent = text; c.appendChild(d);
+  while (c.childNodes.length > 400) c.removeChild(c.firstChild);
+  c.scrollTop = c.scrollHeight;
+}
+function setLinkUi(on) {
+  $('liveDot').classList.toggle('on', on);
+  for (const id of ['getBtn', 'sendBtn', 'pullBtn', 'startBtn', 'stopBtn', 'rebootBtn', 'carDefaultsBtn', 'rawSend', 'disconnectBtn', 'calStart', 'calStop']) $(id).disabled = !on;
+  $('connectBtn').disabled = on || !hasSerial; $('saveLog').disabled = !rxLines.length;
+  if (!on) setCarState(null);
+}
+function setCarState(s) {
+  const el = $('carState');
+  if (!s) { el.className = 'pill idle'; el.textContent = port ? 'Đã kết nối' : 'Chưa kết nối'; return; }
+  const names = {INIT: 'Đang hiệu chuẩn gyro', WAIT_START: 'Chờ START', RUN_ROUTE: 'Đang chạy', FINISH: 'Về đích', FAULT: 'Lỗi: ' + (s.reason || '')};
+  el.className = 'pill ' + (s.state === 'FAULT' ? 'bad' : s.state === 'RUN_ROUTE' || s.state === 'FINISH' ? 'ok' : 'idle');
+  el.textContent = names[s.state] || s.state;
+}
+function newLiveParser() {
+  let pending = 0;
+  live = new U.LineParser((kind, data) => {
+    if (kind === 'param') { carParams[data.name] = data.value; const p = S.TUNE.find(t => t.name === data.name); if (p) paramState(p); }
+    else if (kind === 'state') setCarState(data);
+    else if (kind === 'place') logLine(`${data.start ? 'Vị trí xuất phát' : 'Đặt xe'}: ${data.status === 'OK' ? 'lệch' : data.status} x ${fmt(data.dx, 1)} mm · y ${fmt(data.dy, 1)} mm · góc ${fmt(data.dhDeg, 1)}° (${data.used} tia, rms ${fmt(data.rms, 1)} mm)`, data.status === 'OK' ? '' : 'err');
+    else if (kind === 'posefix') logLine(`Sửa vị trí bằng VL53: ${data.n} lần/1 s, dịch x ${fmt(data.dx, 1)} · y ${fmt(data.dy, 1)} mm`);
+    else if (kind === 'cal') showCal(data);
+    else if (kind === 'err') { logLine('#ERR,' + data, 'err'); toast('Xe từ chối: ' + data); }
+    else if (kind === 'ack') logLine('#ACK,' + data, 'ack');
+    else if (kind === 'run') { setCarState({state: 'RUN_ROUTE'}); if (source !== 'car') showSource('car'); else setRun(liveRun(), false); }
+    if (source === 'car' && ['sample', 'path', 'obstacle', 'avoid', 'event', 'end'].includes(kind)) {
+      if (!run && liveRun()) setRun(liveRun(), false);
+      if (followLive && run) playT = endT();
+      if (!pending) pending = requestAnimationFrame(() => { pending = 0; draw(); updatePlayUi(); });
+      if (kind !== 'sample' || run.samples.length % 5 === 0) { updateVerdict(); if (kind !== 'sample') updateEvents(); updateCharts(true); }
+    }
+  });
+}
+async function connect() {
+  try {
+    port = await navigator.serial.requestPort();
+    const baud = +$('baud').value; store.set('baud', baud);
+    await port.open({baudRate: baud});
+    newLiveParser(); rxLines = [];
+    const enc = new TextEncoder(); writer = port.writable.getWriter();
+    const dec = new TextDecoderStream(); readLoop = port.readable.pipeTo(dec.writable).catch(() => {});
+    reader = dec.readable.getReader();
+    setLinkUi(true); logLine(`— đã mở cổng, ${baud} baud`);
+    port.__send = async line => { await writer.write(enc.encode(line + '\n')); logLine('> ' + line, 'tx'); };
+    readForever();
+    await send('$PING'); await send('$GET');
+  } catch (e) { logLine('Không mở được cổng: ' + e.message, 'err'); port = null; setLinkUi(false); }
+}
+async function readForever() {
+  let buf = '';
+  try {
+    for (;;) {
+      const {value, done} = await reader.read();
+      if (done) break;
+      buf += value;
+      let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i).replace(/\r$/, ''); buf = buf.slice(i+1);
+        rxLines.push(line); if (rxLines.length > 200000) rxLines.shift();
+        if (!/^\d/.test(line)) logLine(line);
+        live.push(line);
+      }
+      $('saveLog').disabled = false;
+    }
+  } catch (e) { logLine('Mất kết nối: ' + e.message, 'err'); }
+  await disconnect(true);
+}
+async function disconnect(silent) {
+  try { if (reader) { await reader.cancel().catch(() => {}); reader.releaseLock(); } } catch {}
+  try { if (writer) writer.releaseLock(); } catch {}
+  try { if (readLoop) await readLoop; } catch {}
+  try { if (port) await port.close(); } catch {}
+  reader = writer = readLoop = null;
+  if (port && !silent) logLine('— đã ngắt');
+  port = null; setLinkUi(false);
+}
+async function send(line) { if (!port || !port.__send) { toast('Chưa kết nối xe.'); return; } try { await port.__send(line); } catch (e) { logLine('Gửi lỗi: ' + e.message, 'err'); } }
+$('connectBtn').onclick = connect;
+$('disconnectBtn').onclick = () => disconnect(false);
+$('getBtn').onclick = () => send('$GET');
+$('sendBtn').onclick = async () => {
+  let n = 0;
+  for (const p of S.TUNE) {
+    if (carParams[p.name] !== undefined && Math.abs(carParams[p.name]-tune[p.key]) <= Math.abs(tune[p.key])*1e-4) continue;
+    await send(`$SET,${p.name},${+tune[p.key].toPrecision(6)}`); n++;
+  }
+  toast(n ? `Đã gửi ${n} tham số, chờ xe xác nhận (#PARAM).` : 'Xe đang dùng đúng các giá trị này.');
+};
+$('pullBtn').onclick = () => { for (const [k, v] of Object.entries(carParams)) setParam(k, v); scheduleSim(); updateFlags(); store.set('tune', tune); toast('Đã chép tham số của xe vào thanh trượt.'); };
+$('startBtn').onclick = () => send('$START');
+$('stopBtn').onclick = () => send('$STOP');
+$('rebootBtn').onclick = () => send('$REBOOT');
+$('carDefaultsBtn').onclick = () => send('$DEFAULTS');
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && port) { e.preventDefault(); send('$STOP'); toast('Đã gửi lệnh DỪNG XE'); } });
+$('rawForm').addEventListener('submit', e => { e.preventDefault(); const v = $('rawCmd').value.trim(); if (v) { send(v); $('rawCmd').value = ''; } });
+$('saveLog').onclick = () => {
+  const blob = new Blob([rxLines.join('\r\n') + '\r\n'], {type: 'text/csv'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `xe_log_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.csv`; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+};
+
+// ---------- hand calibration ($CAL): push straight -> counts/mm, turn in place -> track ----------
+let calResult = null;
+$('calMode').onchange = () => {
+  const push = $('calMode').value === 'push';
+  $('calPushRow').hidden = !push; $('calTurnRow').hidden = push;
+  $('calHelp').textContent = push
+    ? 'Đặt xe trên vạch, bấm Bắt đầu, đẩy xe thẳng bằng tay đúng quãng đã nhập (động cơ tắt), rồi bấm Kết thúc.'
+    : 'Đánh dấu hướng đầu xe, bấm Bắt đầu, xoay xe tại chỗ quanh tâm hai bánh đúng số vòng đã nhập, rồi bấm Kết thúc. Dùng số xung/mm đã hiệu chuẩn trước.';
+};
+function showCal(c) {
+  const push = $('calMode').value === 'push';
+  let text = `${fmt(c.ms/1000, 1)} s · xung trái ${c.left} · phải ${c.right} · gyro ${fmt(c.yawDeg, 1)}°`;
+  calResult = null;
+  if (push) {
+    const d = +$('calDist').value, l = Math.abs(c.left)/d, r = Math.abs(c.right)/d, avg = (l+r)/2, diff = Math.abs(l-r)/avg*100;
+    if (d > 0 && avg > 0) {
+      text += `\nXung/mm: trái ${l.toFixed(3)} · phải ${r.toFixed(3)} · trung bình ${avg.toFixed(3)} (hai bánh lệch ${diff.toFixed(1)}%)`;
+      if (diff > 2) text += '\nHai bánh lệch > 2%: kiểm tra bánh, lốp, hoặc đẩy chưa thẳng.';
+      if (Math.abs(c.yawDeg) > 5) text += '\nGyro báo xe quay > 5°: đẩy lại cho thẳng.';
+      calResult = {cpm: +avg.toFixed(3)};
+    }
+  } else {
+    const cpm = scen.cpm, theta = +$('calTurns').value*2*Math.PI, dl = c.left/cpm, dr = c.right/cpm;
+    const track = Math.abs(dr-dl)/theta, gyroTurns = Math.abs(c.yawDeg)/360;
+    if (theta > 0 && track > 0) {
+      text += `\nKhoảng cách 2 bánh: ${track.toFixed(1)} mm (theo số vòng nhập) · gyro đếm ${gyroTurns.toFixed(2)} vòng`;
+      if (Math.abs(gyroTurns - theta/(2*Math.PI)) > 0.05*theta/(2*Math.PI)) text += '\nGyro và số vòng nhập lệch > 5%: đếm lại số vòng.';
+      calResult = {track: +track.toFixed(1)};
+    }
+    // Gyro scale: the car's reading already includes its current GYRO_SCALE.
+    const cur = Number.isFinite(carParams.GYRO_SCALE) ? carParams.GYRO_SCALE : tune.gyroScale;
+    if (theta > 0 && Math.abs(c.yawDeg) > 90) {
+      const g = cur*theta/S.Rad/Math.abs(c.yawDeg);
+      text += `\nGYRO_SCALE: ${cur.toFixed(4)} → ${g.toFixed(4)} (gyro đo ${fmt(Math.abs(c.yawDeg), 1)}° / thật ${fmt(theta/S.Rad, 0)}°)`;
+      if (g < 0.9 || g > 1.1) text += '\nNgoài 0.9…1.1: đếm lại số vòng.';
+      else calResult = Object.assign(calResult || {}, {gyroScale: +g.toFixed(4)});
+    }
+  }
+  $('calOut').textContent = text + (c.done ? '\nĐã kết thúc đo.' : '');
+  $('calApply').disabled = !(c.done && calResult);
+}
+$('calStart').onclick = () => { $('calOut').textContent = 'Đang đo…'; $('calApply').disabled = true; send('$CAL,START'); };
+$('calStop').onclick = () => send('$CAL,STOP');
+$('calApply').onclick = () => {
+  if (!calResult) return;
+  if (calResult.cpm) { scen.cpm = calResult.cpm; $('cpm').value = scen.cpm; }
+  if (calResult.track) { scen.track = calResult.track; $('track').value = scen.track; }
+  if (calResult.gyroScale) { setParam('GYRO_SCALE', calResult.gyroScale); store.set('tune', tune); send(`$SET,GYRO_SCALE,${calResult.gyroScale}`); }
+  store.set('scen', scen); scheduleSim(); updateFlags();
+  toast('Đã áp dụng. Chép build_flags ở mục Xuất cấu hình rồi nạp lại firmware.');
+};
+
+// ---------- saved logs ----------
+let logRuns = [], logRun = null;
+$('logFile').addEventListener('change', async e => {
+  const file = e.target.files[0]; if (!file) return;
+  const parsed = U.parseText(await file.text());
+  logRuns = parsed.runs.map(r => Object.assign(r, {kind: 'log', path: withStations(r.path)}));
+  const sel = $('logRun'); sel.innerHTML = '';
+  logRuns.forEach((r, i) => { const o = document.createElement('option'); o.value = i; o.textContent = `Lượt ${r.number || i+1}${r.simulated ? ' (mô phỏng)' : ''} · ${r.samples.length} mẫu · ${r.meta.STOP_REASON || 'chưa kết thúc'}`; sel.appendChild(o); });
+  sel.disabled = !logRuns.length;
+  if (!logRuns.length) { toast('File không có mẫu hợp lệ (cần dòng tiêu đề TIME_MS và dữ liệu).'); return; }
+  sel.value = logRuns.length-1; logRun = logRuns[logRuns.length-1]; showSource('log');
+  for (const [k, v] of Object.entries(parsed.params)) carParams[k] = carParams[k] === undefined ? undefined : carParams[k];
+});
+$('logRun').onchange = e => { logRun = logRuns[+e.target.value]; showSource('log'); };
+
+// ---------- export ----------
+function updateFlags() {
+  const lines = ['build_flags =', '    -DI2C_TIMEOUT_TICK=5', '    -flto'];
+  if (+$('baud').value === 38400) lines.push('    -DSTATIC_ROUTE_BAUD=38400');
+  const macro = {CRUISE_CPS: 'STATIC_ROUTE_CRUISE_CPS', APPROACH_CPS: 'STATIC_ROUTE_APPROACH_CPS', AVOID_CPS: 'STATIC_ROUTE_AVOID_CPS',
+    LAT_ACCEL: 'STATIC_ROUTE_LAT_ACCEL', LATERAL_GAIN: 'STATIC_ROUTE_LATERAL_GAIN', HEADING_GAIN: 'STATIC_ROUTE_HEADING_GAIN',
+    FILLET_MM: 'STATIC_ROUTE_FILLET_MM', SAFE_MARGIN: 'STATIC_ROUTE_SAFE_MARGIN_MM', DETECT_MM: 'STATIC_ROUTE_DETECT_MM'};
+  const sets = [];
+  for (const p of S.TUNE) {
+    const v = tune[p.key];
+    if (Math.abs(v-p.def) > Math.abs(p.def)*1e-6) { lines.push(`    -D${macro[p.name]}=${+v.toPrecision(6)}f`); sets.push(`$SET,${p.name},${+v.toPrecision(6)}`); }
+  }
+  if (Math.abs(scen.cpm-4.5) > 1e-6) lines.push(`    -DMAP_NAM_COUNTS_PER_MM=${scen.cpm}f`);
+  if (Math.abs(scen.track-90) > 1e-6) lines.push(`    -DMAP_NAM_TRACK_MM=${scen.track}f`);
+  $('flags').value = lines.join('\n') + (sets.length ? '\n\n; Hoặc gửi lúc chạy (không cần nạp lại):\n; ' + sets.join('\n; ') : '');
+}
+$('baud').addEventListener('change', () => { store.set('baud', +$('baud').value); updateFlags(); });
+$('copyFlags').onclick = async () => {
+  try { await navigator.clipboard.writeText($('flags').value); toast('Đã chép build_flags.'); }
+  catch { $('flags').select(); toast('Đã chọn sẵn, bấm Ctrl+C để chép.'); }
+};
+
+// ---------- boot ----------
+function onTheme() { readColors(); recolorCharts(); draw(); }
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', onTheme);
+new MutationObserver(onTheme).observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']});
+window.addEventListener('resize', resize);
+readColors(); buildParams(); unknownChanged(); updateFlags(); setLinkUi(false);
+window.addEventListener('load', () => { readColors(); initCharts(); resize(); runSim(); });
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

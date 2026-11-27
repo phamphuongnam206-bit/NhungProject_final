@@ -1,0 +1,41 @@
+{
+  // Workspace dang mo o thu muc cha -> chuyen tiep sang project PlatformIO o NhungProject_clean/.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "STM32 - Nap code / Serial",
+      "type": "process",
+      "command": "${env:USERPROFILE}/.platformio/penv/Scripts/python.exe",
+      "args": [
+        "${workspaceFolder}/NhungProject_clean/tools/stm32.py",
+        "${input:stm32Action}",
+        "${file}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/NhungProject_clean"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "stm32Action",
+      "type": "pickString",
+      "description": "Chon thao tac (chay code cua file .cpp dang mo)",
+      "options": [
+        { "label": "1. Nap code", "value": "upload" },
+        { "label": "2. Doc Serial", "value": "monitor" }
+      ],
+      "default": "upload"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  // Project nay dung PlatformIO, khong dung CMake.
+  "cmake.configureOnOpen": false,
+  "cmake.autoSelectActiveFolder": false,
+  "cmake.ignoreCMakeListsMissing": true
+}

@@ -240,7 +240,7 @@ textarea { width: 100%; min-height: 120px; resize: vertical; padding: 8px; borde
       <header><h2 id="hCar">Kết nối xe</h2><span class="pill idle" id="carState">Chưa kết nối</span></header>
       <div id="serialUnsupported" class="notice" hidden>Trình duyệt này không có Web Serial. Mở file <span class="mono">tools/web/sa_ban.html</span> bằng Chrome hoặc Edge trên máy tính. Bluetooth HC-05 sau khi ghép đôi trên Windows là một cổng COM, chọn nó như dây USB–UART.</div>
       <div class="row"><label for="baud">Baud</label>
-        <select id="baud"><option value="115200">115200 · dây USB–UART</option><option value="38400">38400 · Bluetooth HC-05</option></select>
+        <select id="baud"><option value="115200">115200 · USB–UART và Bluetooth HC-05</option></select>
         <button class="btn primary" id="connectBtn">Kết nối</button><button class="btn" id="disconnectBtn" disabled>Ngắt</button></div>
       <div class="row">
         <button class="btn" id="getBtn" disabled>Đọc tham số</button>
